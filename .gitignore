@@ -1,0 +1,7 @@
+# Will restricyt my secrets and keys
+*.pem
+*.key
+gpgkeys/
+pki/
+.plumi/
+*.bak
