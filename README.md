@@ -51,3 +51,25 @@ OpenNebula has no Pulumi provider, so I bridge the community Terraform provider:
 I put the reverse proxy on Azure to keep Keycloak and its database isolated from the public internet. Only the stateless proxy is exposed; the identity and data layers stay on the private cloud.
 
 Secrets are handled in two places. Cloud credentials (the OpenNebula API user/password, etc.) live in Pulumi's stack config, encrypted at rest so the config file is safe to commit. In-guest secrets (the database password, Keycloak admin, WireGuard keys) live in Salt's GPG-encrypted pillar — the master decrypts them and hands each minion only its own, so nothing sensitive is ever stored in git in plaintext.
+
+## SetUp details
+
+#### Step1: Ctl-01 (Salt master + Pulumi program + Salt reactor)
+
+Instantiated a VM from the `Ubuntu-20.04-Base` template (since Pulumi can't provision the machine it runs on), with 2 vCPU, 4GB RAM, 50GB disk. Pulumi and Salt are installed on it, and the Pulumi program is cloned from this repo.
+
+Pulumi Backend choice: I use the local backend, which stores the state file in ~/.pulumi. 
+
+Note: I access the Ctl-01 VM  which is behind the OPNsense firewall through SSH with PKI (OPNsense translates the public key to an internal Bastion VM through highport NAT, so from that node I ssh to the Ctl-01 on the local vnet). 
+ssh -A <high-port>  adel@<public-ip>
+
+#### Step 2: OpenNebula prep
+
+Created a dedicated OpenNebula user for Pulumi instead of using oneadmin (never), with USE rights only on the `Ubuntu-24.04-Base` template, its image, and the vnet. Automation gets its own least-privilege identity, so anything Pulumi does is traceable to that user and can't touch the rest of the cloud.
+
+Exported the template for reference so the repo is self-contained:
+`onetemplate show -x <id> > templates/ubuntu-24.04-base.yaml`
+
+The OpenNebula credentials for this user are stored as Pulumi secret config (`pulumi config set --secret`).
+
+#### Step 3: Provisioning the minions (Pulumi)

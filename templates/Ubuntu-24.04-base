@@ -1,0 +1,27 @@
+AUTOSTART="yes"
+CONTEXT=[
+  NETWORK="YES",
+  PASSWORD="********************",
+  SSH_PUBLIC_KEY="$USER[SSH_PUBLIC_KEY]",
+  START_SCRIPT_BASE64="**********",
+  USERNAME="ubuntu" ]
+CPU="1"
+DISK=[
+  IMAGE_ID="76",
+  SIZE="40960" ]
+GRAPHICS=[
+  LISTEN="0.0.0.0",
+  PASSWD="*********",
+  TYPE="vnc" ]
+HYPERVISOR="kvm"
+LOGO="images/logos/ubuntu.png"
+LXD_SECURITY_PRIVILEGED="true"
+MEMORY="1024"
+NIC=[
+  MODEL="virtio",
+  NETWORK="vnet-internal",
+  NETWORK_UNAME="adel" ]
+OS=[
+  ARCH="x86_64" ]
+SCHED_REQUIREMENTS="(HYPERVISOR=kvm)"
+VCPU="2"
