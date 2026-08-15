@@ -1,0 +1,9 @@
+encryptionsalt: ************************************************
+config:
+  one:endpoint: http://************:2633/RPC2
+  one:username: ********
+  one:password:
+    secure: ***************************
+  opennebula-azure-iac:sshPublicKey: ssh-ed25519 **************************************************
+  opennebula-azure-iac:masterAddrInternal: 10.0.0.19
+  opennebula-azure-iac:masterAddrPublic: *************

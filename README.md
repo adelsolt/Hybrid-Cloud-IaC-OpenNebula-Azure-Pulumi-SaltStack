@@ -46,11 +46,13 @@ This VM is created manually, as a one-time setup, and hosts the Salt master, the
 
 ### Engineering Decisions
 
-OpenNebula has no Pulumi provider, so I bridge the community Terraform provider: Pulumi reads its schema and generates a typed Go SDK from it. No Terraform binary and no HCL end up in the workflow, I just import the generated SDK in my Go program.
+OpenNebula has no Pulumi provider, so I bridge the community Terraform provider: Pulumi reads its schema and generates a typed Go SDK from it. No Terraform binary and no HCL end up in the workflow, I just import the generated SDK in my Go program. Usually I run ``ònetemplate instantiate`` manually with the OpenNebula Frontend's XML-RPC API, now The Pulumi provider will do the same by connecting to OpenNebula 's XML-RPC API directly (https://<frontend>:2633/RPC2)
 
 I put the reverse proxy on Azure to keep Keycloak and its database isolated from the public internet. Only the stateless proxy is exposed; the identity and data layers stay on the private cloud.
 
-Secrets are handled in two places. Cloud credentials (the OpenNebula API user/password, etc.) live in Pulumi's stack config, encrypted at rest so the config file is safe to commit. In-guest secrets (the database password, Keycloak admin, WireGuard keys) live in Salt's GPG-encrypted pillar — the master decrypts them and hands each minion only its own, so nothing sensitive is ever stored in git in plaintext.
+Secrets are handled in two places. Cloud credentials (the OpenNebula API user/password, etc.) live in Pulumi's stack config, encrypted at rest so the config file is safe to commit. In-guest secrets (the database password, Keycloak admin, WireGuard keys) live in Salt's GPG-encrypted pillar, the master decrypts them and hands each minion only its own, so nothing sensitive is ever stored in git in plaintext.
+
+Split master address for a hybrid setup. The Salt minions don't all reach the master the same way. db-01 and app-01 sit on the same internal vnet as the control plane, so they reach the master directly on its private address (10.0.0.19). The Azure edge is outside that network, so it reaches the master through the OPNsense public IP, where ports 4505/4506 are forwarded and source-restricted to the edge's IP. I kept both values as separate Pulumi config keys (masterAddrInternal / masterAddrPublic) and the bootstrap picks the right one per VM at provision time.
 
 ## SetUp details
 
@@ -73,3 +75,7 @@ Exported the template for reference so the repo is self-contained:
 The OpenNebula credentials for this user are stored as Pulumi secret config (`pulumi config set --secret`).
 
 #### Step 3: Provisioning the minions (Pulumi)
+
+The Pulumi program instantiates `db-01` and `app-01` from the template. Each VM boots with a bootstrap script injected through OpenNebula contextualization, which installs the Salt minion, sets its role grain, and points it at the master.
+
+`pulumi up` ==> two VMs come up on OpenNebula, each already reaching out to Ctl-01.
