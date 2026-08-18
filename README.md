@@ -74,8 +74,10 @@ Exported the template for reference so the repo is self-contained:
 
 The OpenNebula credentials for this user are stored as Pulumi secret config (`pulumi config set --secret`).
 
-#### Step 3: Provisioning the minions (Pulumi)
+#### Step 3: Pulumi project scaffold and OpenNebula SDK generation
 
-The Pulumi program instantiates `db-01` and `app-01` from the template. Each VM boots with a bootstrap script injected through OpenNebula contextualization, which installs the Salt minion, sets its role grain, and points it at the master.
+In this would sset up Pulumi config locally and hood the OpenNebula Terraform provider to generate a Go SDK. The Pulumi config includes the OpenNebula API endpoint, the dedicated user credentials, and the Azure credentials. Setting the Master addresses (Internal/Public).
 
-`pulumi up` ==> two VMs come up on OpenNebula, each already reaching out to Ctl-01.
+
+
+
