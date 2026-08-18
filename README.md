@@ -54,6 +54,25 @@ Secrets are handled in two places. Cloud credentials (the OpenNebula API user/pa
 
 Split master address for a hybrid setup. The Salt minions don't all reach the master the same way. db-01 and app-01 sit on the same internal vnet as the control plane, so they reach the master directly on its private address (10.0.0.19). The Azure edge is outside that network, so it reaches the master through the OPNsense public IP, where ports 4505/4506 are forwarded and source-restricted to the edge's IP. I kept both values as separate Pulumi config keys (masterAddrInternal / masterAddrPublic) and the bootstrap picks the right one per VM at provision time.
 
+
+Reaching the OpenNebula API from ctl-01 (due to strict OpenNebula firewall rules, the XML port 2633 is only open to the localhost). So though I would create a connection between the Pulumi program and the OpenNebula API, with a Remote Forward Tunnel. 
+The ctl-01 (where Pulumi runs) sits inside the private vnet and has no route to the
+OpenNebula API on the frontend. Only my laptop can reach both sides, so I use a
+reverse SSH tunnel to plant the API on ctl-01's localhost:
+```bash
+ssh -A -R 2633:<frontend>:2633 -J <user>@<bastion>:<port> <user>@<ctl-01>
+```
+
+Then Pulumi points at it locally:
+
+```bash
+pulumi config set one:endpoint http://localhost:2633/RPC2
+```
+
+A `-R` (reverse) forward instead of `-L` because the connection has to start from the
+laptop, the one host with reach, not from ctl-01.
+
+
 ## SetUp details
 
 #### Step1: Ctl-01 (Salt master + Pulumi program + Salt reactor)
@@ -79,5 +98,34 @@ The OpenNebula credentials for this user are stored as Pulumi secret config (`pu
 In this would sset up Pulumi config locally and hood the OpenNebula Terraform provider to generate a Go SDK. The Pulumi config includes the OpenNebula API endpoint, the dedicated user credentials, and the Azure credentials. Setting the Master addresses (Internal/Public).
 
 
+#### Step 4: Bootstrap & minion configuration
+
+Each VM boots with a bootstrap script that Pulumi injects through the OpenNebula START_SCRIPT_BASE64 context field (base64-encoded so the context parser doesn't mangle it). The script is deliberately minimal: it installs the salt-minion, writes the master's address into the minion config so the VM dials home, and tags the VM with its role grain. Everything past that is Salt's job. 
+I also used to run manual a script to create sudo users and inject public keys is now the base/users.sls state.
 
 
+#### Step 5: Provision db-01 and app-01 with Pulumi
+db-01 and app-01 are instantiated from the template. They're defined as a Go slice of specs, so adding a machine is adding a struct, not copy-pasting a block. Each boots with a bootstrap script (injected via OpenNebula contextualization) that installs the Salt minion, sets its role grain, and points it at the master.
+
+
+
+
+
+
+
+
+
+## Running The Project
+
+First let's fireup our OpenNebula API Tunnel (check the Key Engineering Decisions section for details):
+
+```bash
+cd pulumi
+pulumi up          # provisions of the VMs on OpenNebula
+```
+
+![db-01 and app-01 created](docs/docs-image1.png)
+
+Successfully deployed on the Sunstone OpenNebula cloud, with the two VMs (db-01 and app-01) running and reachable from the Salt master. The Salt minions are connected to the master and ready to receive configuration.
+
+![Sunstone-guo](docs/docs-image2.png)
