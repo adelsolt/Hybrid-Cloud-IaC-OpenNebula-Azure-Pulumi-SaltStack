@@ -108,7 +108,7 @@ I also used to run manual a script to create sudo users and inject public keys i
 db-01 and app-01 are instantiated from the template. They're defined as a Go slice of specs, so adding a machine is adding a struct, not copy-pasting a block. Each boots with a bootstrap script (injected via OpenNebula contextualization) that installs the Salt minion, sets its role grain, and points it at the master.
 
 
-#### Step 6: 
+#### Step 6: Installing SSalt and setting up the master
 
 Installed the Salt master on ctl-01, pointing `file_roots` and `pillar_roots` at
 `/srv/salt` and `/srv/pillar`. Set `interface: 0.0.0.0` so minions on the vnet can reach
@@ -117,7 +117,17 @@ the bus on 4505/4506.
 Note:  Minions first came up with no hostname, so they registered as `localhost` instead
 of their names. Fixed in the bootstrap: set the hostname and write `/etc/salt/minion_id` explicitly before installing the minion, so each VM registers by its role name automatically.
 
+#### Step 7: Base Workloads hardening formula
 
+A `base` formula applied to every minion, split into three states pulled together by
+`base/init.sls`:
+- **users**: named users, their SSH keys, and sudo, all defined in pillar. This
+  replaces the manual script I used to run by hand to create users and inject keys.
+- **ssh**: root login and password auth disabled, key-only access.
+- **firewall**: nftables with a default-deny inbound policy, SSH allowed.
+
+Config is templated and pushed with `file.managed`, and services restart only when
+their config actually changes (`watch`).
 
 ## Running The Project
 
@@ -142,3 +152,14 @@ sudo salt '*' test.ping     # confirm both respond
 ```
 
 ![accepting salt keys](docs/docs-image3.png)
+
+
+Apply the base hardening to all minions( this creates named users with their public keys injected for ssh access, and disables password login, locking down ssh to key based aithentication only, and nftables to deny inbound by default, allowing only the Salt bus and WireGuard traffic and ssh):
+
+```bash
+sudo salt '*' state.apply base
+```
+
+Example output:
+
+![Salt base running](docs/docs-image4.png)
