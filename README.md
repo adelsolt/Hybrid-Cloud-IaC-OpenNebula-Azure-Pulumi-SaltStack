@@ -108,10 +108,14 @@ I also used to run manual a script to create sudo users and inject public keys i
 db-01 and app-01 are instantiated from the template. They're defined as a Go slice of specs, so adding a machine is adding a struct, not copy-pasting a block. Each boots with a bootstrap script (injected via OpenNebula contextualization) that installs the Salt minion, sets its role grain, and points it at the master.
 
 
+#### Step 6: 
 
+Installed the Salt master on ctl-01, pointing `file_roots` and `pillar_roots` at
+`/srv/salt` and `/srv/pillar`. Set `interface: 0.0.0.0` so minions on the vnet can reach
+the bus on 4505/4506.
 
-
-
+Note:  Minions first came up with no hostname, so they registered as `localhost` instead
+of their names. Fixed in the bootstrap: set the hostname and write `/etc/salt/minion_id` explicitly before installing the minion, so each VM registers by its role name automatically.
 
 
 
@@ -129,3 +133,12 @@ pulumi up          # provisions of the VMs on OpenNebula
 Successfully deployed on the Sunstone OpenNebula cloud, with the two VMs (db-01 and app-01) running and reachable from the Salt master. The Salt minions are connected to the master and ready to receive configuration.
 
 ![Sunstone-guo](docs/docs-image2.png)
+
+Then we should accapt the minions Keys on the Salt master after Pulumi provisions the VMs:
+
+```bash
+salt-key -A            # accept the new minions on the master
+sudo salt '*' test.ping     # confirm both respond
+```
+
+![accepting salt keys](docs/docs-image3.png)
