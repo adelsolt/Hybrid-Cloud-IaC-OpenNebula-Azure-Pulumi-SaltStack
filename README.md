@@ -140,6 +140,11 @@ Plaintext + gitignore is the current approach. The GPG-encrypted pillar route (w
 lets the secrets file itself be committed) is parked on the `feature/gpg-pillar` branch
 to finish later (I had many issues making the Salt decrypt the secrets with the GPG key).
 
+#### Step 9: Adding Salt Roles (DB, Keycloak) 
+Note: Ill get to the Edge proxy later.
+
+Salt would ùmanage the DB content, DB users, and Keycloak configuration. The DB state creates the database, user, and schema, and injects the password from pillar. The Keycloak state installs the server, configures it to use the DB, and sets up the admin user with its password from pillar.
+
 
 
 ## Running The Project
@@ -190,3 +195,10 @@ Check a minion sees its pillar and a specific value:
 sudo salt 'db-01' pillar.items
 sudo salt 'db-01' pillar.get db_password
 ```
+
+Would want to emphisize on how the Salt roles works, so after defining the DB role in pillar, we can apply the DB state to the db-01 minion:
+
+```bash
+sudo salt 'db-01' state.apply db
+```
+![DB created by Salt](docs/docs-image5.png)
