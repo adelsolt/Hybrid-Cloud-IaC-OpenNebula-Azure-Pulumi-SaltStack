@@ -145,6 +145,8 @@ Note: Ill get to the Edge proxy later.
 
 Salt would ùmanage the DB content, DB users, and Keycloak configuration. The DB state creates the database, user, and schema, and injects the password from pillar. The Keycloak state installs the server, configures it to use the DB, and sets up the admin user with its password from pillar.
 
+Keycloak from the release tarball (verified by checksum), non-root systemd service, config templated from pillar. proxy-headers=xforwarded so it trusts the edge proxy's headers, since TLS terminates there.
+
 
 
 ## Running The Project

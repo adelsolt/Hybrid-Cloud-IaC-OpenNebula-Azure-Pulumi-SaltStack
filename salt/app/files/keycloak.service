@@ -1,0 +1,11 @@
+[Unit]
+Description=Keycloak
+After=network.target
+
+[Service]
+User=keycloak
+ExecStart=/opt/keycloak/bin/kc.sh start
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
