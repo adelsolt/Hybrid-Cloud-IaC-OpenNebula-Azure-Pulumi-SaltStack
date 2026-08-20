@@ -129,6 +129,19 @@ A `base` formula applied to every minion, split into three states pulled togethe
 Config is templated and pushed with `file.managed`, and services restart only when
 their config actually changes (`watch`).
 
+#### Step 8: Pillar and secrets
+
+Pillar holds per-minion data served by the master. Non-secret values (users, db host,
+versions) are committed. Secrets go in one file, `secrets.sls`, which is gitignored; a
+committed `secrets.sls.example` shows the keys without the values. Each minion only
+ever receives its own pillar.
+
+Plaintext + gitignore is the current approach. The GPG-encrypted pillar route (which
+lets the secrets file itself be committed) is parked on the `feature/gpg-pillar` branch
+to finish later (I had many issues making the Salt decrypt the secrets with the GPG key).
+
+
+
 ## Running The Project
 
 First let's fireup our OpenNebula API Tunnel (check the Key Engineering Decisions section for details):
@@ -163,3 +176,17 @@ sudo salt '*' state.apply base
 Example output:
 
 ![Salt base running](docs/docs-image4.png)
+
+
+Apply pillar changes (pillar is compiled by the master, so refresh it on the minions):
+
+```bash
+sudo salt '*' saltutil.refresh_pillar
+```
+
+Check a minion sees its pillar and a specific value:
+
+```bash
+sudo salt 'db-01' pillar.items
+sudo salt 'db-01' pillar.get db_password
+```
