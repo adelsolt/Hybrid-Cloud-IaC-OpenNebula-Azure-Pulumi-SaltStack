@@ -129,6 +129,14 @@ A `base` formula applied to every minion, split into three states pulled togethe
 Config is templated and pushed with `file.managed`, and services restart only when
 their config actually changes (`watch`).
 
+#### Step 8: Pillar and GPG-encrypted secrets
+
+Pillar holds per-minion data, served by the master, a minion only ever receives its
+own. Non-secret values (users, hostnames) sit in plain pillar. Secrets (DB password,
+WireGuard keys) for for maximum security I wll GPG-encrypt them:
+I encrypt each secret once with the master's public key and paste the ciphertext into
+`secrets.sls`. Same role as Ansible vars + Vault. 
+
 ## Running The Project
 
 First let's fireup our OpenNebula API Tunnel (check the Key Engineering Decisions section for details):
@@ -163,3 +171,25 @@ sudo salt '*' state.apply base
 Example output:
 
 ![Salt base running](docs/docs-image4.png)
+
+
+Now for new secrets, we can add them to the pillar and re-apply the state to the minion. The master will decrypt the secrets and push them to the minion, which will use them in its configuration.
+
+Encrypt a new secret (paste the output block into a pillar file):
+
+```bash
+echo -n 'THE_SECRET_VALUE' | sudo gpg --homedir /etc/salt/gpgkeys --armor --encrypt -r <KEYID>
+```
+
+Note: `<KEYID>` is the GPG key ID of the Salt master, I put it in: 
+
+```bash
+sudo gpg --homedir /etc/salt/gpgkeys --list-keys
+```
+
+Check a minion receives (and the master decrypts) its pillar:
+
+```bash
+sudo salt 'db-01' pillar.items
+sudo salt 'db-01' pillar.get db_password
+```
