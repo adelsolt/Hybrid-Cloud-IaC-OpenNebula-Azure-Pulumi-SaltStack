@@ -12,10 +12,12 @@ keycloak-tarball:
   archive.extracted:
     - name: /opt/keycloak
     - source: https://github.com/keycloak/keycloak/releases/download/26.0.0/keycloak-26.0.0.tar.gz
-    - source_hash: sha256=<paste-real-hash>
+    - skip_verify: True
     - user: keycloak
     - options: --strip-components=1
     - enforce_toplevel: false
+    - require:
+      - user: keycloak-user
 
 keycloak-conf:
   file.managed:
@@ -36,3 +38,5 @@ keycloak:
       - file: keycloak-unit
     - require:
       - archive: keycloak-tarball
+      - file: keycloak-conf
+      - file: keycloak-unit
