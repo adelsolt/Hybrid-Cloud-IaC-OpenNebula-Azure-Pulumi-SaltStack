@@ -179,6 +179,10 @@ This is the capability that sets Salt apart from Ansible: Ansible is push-based 
 acts when invoked, while Salt keeps a persistent event bus and can respond to changes as
 they happen — no cron, no polling.
 
+#### Final Step: Orchestration
+
+Where `state.apply` converges a single minion, the orchestrate runner coordinates the whole stack from the master in dependency order: harden all nodes, then PostgreSQL, then Keycloak, then the tunnel, then the edge proxy. Each stage `require`s the previous, so the ordering that the build depends on (DB before Keycloak, tunnel before edge) is encoded once and repeatable with a single command.
+
 
 
 ## Running The Project
@@ -288,10 +292,23 @@ Watch the bus and trigger a change:
 ```bash
 # terminal 1
 sudo salt-run state.event pretty=True
-# terminal 2 — tamper the watched file
+# terminal 2: tamper the watched file
 sudo salt 'edge-az-01' cmd.run 'echo "# tampered" >> /etc/nginx/sites-enabled/keycloak.conf'
 ```
 
 The reactor re-applies the state and reverts the change automatically.
 
 ![event bus firing and the reactor restoring the file](docs/docs-image9.png)
+
+Overall project Demo to build the entire stack in order with one command:
+
+```bash
+sudo salt-run state.orchestrate orch.deploy
+```
+
+```bash
+pulumi destroy # destro previously provisioned resources
+pulumi up
+sudo salt-key -A
+sudo salt-run state.orchestrate orch.deploy
+```
