@@ -171,6 +171,15 @@ Two things that had to be right for it to actually pass traffic, not just handsh
 nginx on the edge terminates TLS and reverse-proxies to Keycloak at 10.30.0.1:8080 through the WireGuard tunnel. It forwards the `X-Forwarded-*` headers that Keycloak is configured to trust, so Keycloak builds correct HTTPS redirect URLs even though TLS terminates one hop earlier. 
 
 
+#### Step 13: Salt Beacon/Reactor (event-driven remediation)
+
+So put an inotify beacon on the edge watches the nginx vhost. When the file changes it emits an event on Salt's event bus, the master's reactor catches the event tag and re-applies the edge state, restoring the file within seconds. `disable_during_state_run` stops the remediation from re-triggering the beacon in a loop.
+
+This is the capability that sets Salt apart from Ansible: Ansible is push-based and only
+acts when invoked, while Salt keeps a persistent event bus and can respond to changes as
+they happen — no cron, no polling.
+
+
 
 ## Running The Project
 
@@ -272,3 +281,17 @@ Bringing the full path up surfaced the usual layered failures, each fixed at its
 Then open `https://<edge-public-ip>` the Keycloak login page loads over the tunnel.
 
 ![Keycloak login served through the Azure edge](docs/docs-image8.png)
+
+
+Watch the bus and trigger a change:
+
+```bash
+# terminal 1
+sudo salt-run state.event pretty=True
+# terminal 2 — tamper the watched file
+sudo salt 'edge-az-01' cmd.run 'echo "# tampered" >> /etc/nginx/sites-enabled/keycloak.conf'
+```
+
+The reactor re-applies the state and reverts the change automatically.
+
+![event bus firing and the reactor restoring the file](docs/docs-image9.png)

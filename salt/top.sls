@@ -12,3 +12,4 @@ base:
     - match: grain
     - edge
     - wireguard
+    - beacons
