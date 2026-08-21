@@ -1,2 +1,0 @@
-db_password: ThicdlsjknbyG7Gbjnvre
-keycloak_admin_password: TcdnsbcdgvGY5Fhgv65Rjyghgv

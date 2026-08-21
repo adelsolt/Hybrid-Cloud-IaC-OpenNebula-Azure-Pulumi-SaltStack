@@ -156,6 +156,14 @@ The NSG allows SSH (from my IP) and HTTPS, but no Salt ports, the minion dials o
 Region and size were constrained by the subscription (I have Azure for Students), not by choice: the subscription's
 Azure policy only allowed `austriaeast`, which offers only v2 burstable sizes (the common `B1s` isn't available there) and a Dynamic PubIP.
 
+#### Step 13: WireGuard tunnel (Salt-managed)
+
+Salt configures both ends of a WireGuard tunnel between app-01 (Keycloak) and the Azure edge, from a single template that branches on the `role` grain, each host renders its own interface and peer from the same file. Private keys come from the gitignored secrets pillar; public keys and endpoints from normal pillar. The tunnel gives a 10.30.0.0/24 overlay (app-01 = .1, edge = .2), so all edge ==> Keycloak traffic rides inside it and authentication never crosses the public internet in plaintext.
+
+Two things that had to be right for it to actually pass traffic, not just handshake:
+- The peer endpoint needs `IP:port`, not a bare IP, or wg-quick fails to parse.
+- The base firewall default-drops inbound, so the tunnel handshaked but ICMP/data were
+  dropped until I added `iifname "wg0" accept` to nftables
 
 ## Running The Project
 
@@ -230,3 +238,15 @@ sudo salt '*' test.ping
 
 ![all three minions responding across OpenNebula and Azure](docs/docs-image7.png)
 
+Bring up the tunnel (both peers must be up):
+
+```bash
+sudo salt -L 'app-01,edge-az-01' state.apply wireguard
+```
+
+Verify handshake and connectivity through the tunnel:
+
+```bash
+sudo salt 'edge-az-01' cmd.run 'wg show'
+sudo salt 'edge-az-01' cmd.run 'ping -c2 10.30.0.1'
+```

@@ -5,4 +5,4 @@ gpgkeys/
 pki/
 .plumi/
 *.bak
-pillar/secerity.sls
+secrets.sls
