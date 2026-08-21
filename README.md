@@ -147,6 +147,14 @@ Salt would ùmanage the DB content, DB users, and Keycloak configuration. The DB
 
 Keycloak from the release tarball (verified by checksum), non-root systemd service, config templated from pillar. proxy-headers=xforwarded so it trusts the edge proxy's headers, since TLS terminates there.
 
+#### Step 10: Provisionning Azure edge with Pulumi
+
+The same Pulumi program provisions the edge on Azure, resource group, vnet, subnet, NSG, public IP, NIC, and the VM. I will be reusing the exact bootstrap template as the OpenNebula minions, only with role `edge` and the master's public address. 
+
+The NSG allows SSH (from my IP) and HTTPS, but no Salt ports, the minion dials out to the master, nothing dials in. The master is reached through an OPNsense port-forward (4505/4506 ==> ctl-01), source-restricted to the edge's public IP.
+
+Region and size were constrained by the subscription (I have Azure for Students), not by choice: the subscription's
+Azure policy only allowed `austriaeast`, which offers only v2 burstable sizes (the common `B1s` isn't available there) and a Dynamic PubIP.
 
 
 ## Running The Project
@@ -204,3 +212,21 @@ Would want to emphisize on how the Salt roles works, so after defining the DB ro
 sudo salt 'db-01' state.apply db
 ```
 ![DB created by Salt](docs/docs-image5.png)
+
+Provision the edge (runs alongside the OpenNebula VMs):
+
+```bash
+pulumi up
+```
+![All resources created (edge)](docs/docs-image6.png)
+
+
+Accept the new minion and confirm all three respond across both clouds:
+
+```bash
+sudo salt-key -A
+sudo salt '*' test.ping
+```
+
+![all three minions responding across OpenNebula and Azure](docs/docs-image7.png)
+
